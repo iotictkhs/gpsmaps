@@ -3,50 +3,239 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPS Tracking - IoT Monitoring</title>
+    <title>GPS Tracking - Satellite View</title>
     
-    <!-- Tailwind CSS dari CDN lokal -->
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    
-    <!-- Leaflet CSS & JS dari CDN yang lebih reliable -->
+    <!-- Leaflet CSS (ringan) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    
+    <!-- Simple CSS (tanpa Tailwind) -->
     <style>
-        #map { 
-            height: 100%; 
-            min-height: 500px;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a202c; 
+            color: white;
+            height: 100vh;
+            overflow: hidden;
         }
-        .leaflet-container {
-            font-size: 14px;
+        .container { 
+            display: flex; 
+            height: 100vh; 
+        }
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: rgba(26, 32, 44, 0.95);
+            border-right: 1px solid #2d3748;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        .header {
+            background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+            padding: 20px;
+            border-bottom: 1px solid #4a5568;
+        }
+        .header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+            color: white;
+        }
+        .header p {
+            font-size: 12px;
+            color: #cbd5e0;
+        }
+        /* Stats */
+        .stats {
+            padding: 15px;
+            border-bottom: 1px solid #2d3748;
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .stat-card {
+            background: rgba(45, 55, 72, 0.7);
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-card .label {
+            font-size: 11px;
+            color: #a0aec0;
+            margin-bottom: 5px;
+        }
+        .stat-card .value {
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+        }
+        /* Controls */
+        .controls {
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid #2d3748;
+        }
+        .btn {
+            flex: 1;
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .btn:hover {
+            background: #3182ce;
+        }
+        .btn-danger {
+            background: #f56565;
+        }
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+        .btn-success {
+            background: #48bb78;
+        }
+        .btn-success:hover {
+            background: #38a169;
+        }
+        /* Location List */
+        .location-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .location-item {
+            background: rgba(45, 55, 72, 0.6);
+            border: 1px solid #4a5568;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
         .location-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background: rgba(66, 153, 225, 0.2);
+            border-color: #4299e1;
         }
-        .bg-blur {
+        .location-item.active {
+            background: rgba(66, 153, 225, 0.3);
+            border-color: #4299e1;
+        }
+        .loc-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .loc-id {
+            font-weight: bold;
+            color: white;
+            font-size: 14px;
+        }
+        .loc-time {
+            font-size: 11px;
+            color: #a0aec0;
+        }
+        .loc-coords {
+            font-family: monospace;
+            font-size: 11px;
+            color: #cbd5e0;
+            margin-bottom: 3px;
+        }
+        .loc-voltage {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .voltage-low { color: #fc8181; }
+        .voltage-normal { color: #68d391; }
+        .voltage-high { color: #63b3ed; }
+        /* Map */
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+        /* Map Controls */
+        .map-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+        .map-btn {
+            background: rgba(26, 32, 44, 0.9);
+            color: white;
+            border: 1px solid #4a5568;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+        }
+        .map-btn:hover {
+            background: rgba(45, 55, 72, 0.9);
+            border-color: #4299e1;
+        }
+        /* Status Bar */
+        .status-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(26, 32, 44, 0.9);
+            border: 1px solid #4a5568;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #cbd5e0;
+            backdrop-filter: blur(10px);
+        }
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+        /* Mobile */
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .sidebar { width: 100%; height: 40vh; }
+            #map { height: 60vh; }
+            .map-controls { top: 10px; right: 10px; }
+            .status-bar { bottom: 10px; left: 10px; }
         }
     </style>
 </head>
-<body class="bg-gray-50">
+<body>
     <?php
     // URL API
     $api_url = "https://daffaiotdev.alwaysdata.net/apigps/api/get/monitoring";
     
-    // Inisialisasi
-    $locations = array();
-    $error = null;
-    
-    // Coba file_get_contents dulu
+    // Ambil data dengan timeout pendek
     $context = stream_context_create(array(
         'http' => array(
             'method' => 'GET',
-            'header' => "User-Agent: Mozilla/5.0\r\n",
-            'timeout' => 10
+            'timeout' => 5
         ),
         'ssl' => array(
             'verify_peer' => false,
@@ -55,26 +244,15 @@
     ));
     
     $response = @file_get_contents($api_url, false, $context);
-    
-    // Fallback ke cURL
-    if ($response === FALSE && function_exists('curl_init')) {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $api_url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        $response = curl_exec($ch);
-        curl_close($ch);
-    }
+    $locations = array();
     
     if ($response !== FALSE && !empty($response)) {
         $data = json_decode($response, true);
-        
-        if (is_array($data) && isset($data['data']) && is_array($data['data'])) {
+        if (isset($data['data']) && is_array($data['data'])) {
             foreach ($data['data'] as $item) {
                 if (!empty($item['latitude']) && !empty($item['longitude'])) {
                     $locations[] = array(
-                        'id' => isset($item['id']) ? $item['id'] : '',
+                        'id' => isset($item['id']) ? $item['id'] : 'N/A',
                         'lat' => floatval($item['latitude']),
                         'lng' => floatval($item['longitude']),
                         'voltage' => isset($item['voltage']) ? floatval($item['voltage']) : 0,
@@ -83,261 +261,113 @@
                     );
                 }
             }
-            // Balik urutan - terbaru di atas
+            // Balik urutan - terbaru pertama
             $locations = array_reverse($locations);
+            // Batasi untuk performa
+            $locations = array_slice($locations, 0, 100);
         }
-    } else {
-        $error = "Tidak dapat mengambil data dari API";
     }
     
-    // Batasi untuk ditampilkan di list (500 data maks)
-    $display_locations = array_slice($locations, 0, 500);
+    $total_points = count($locations);
+    $avg_voltage = 0;
+    if ($total_points > 0) {
+        $total_voltage = 0;
+        foreach ($locations as $loc) {
+            $total_voltage += $loc['voltage'];
+        }
+        $avg_voltage = $total_voltage / $total_points;
+    }
     ?>
     
-    <div class="flex flex-col lg:flex-row h-screen">
-        <!-- Sidebar untuk mobile (toggle) -->
-        <div class="lg:hidden bg-blue-600 text-white p-4 flex justify-between items-center">
-            <h1 class="text-xl font-bold"><i class="fas fa-satellite mr-2"></i>GPS Tracking</h1>
-            <button id="toggleSidebar" class="text-white">
-                <i class="fas fa-bars text-2xl"></i>
-            </button>
-        </div>
-        
+    <div class="container">
         <!-- Sidebar -->
-        <div id="sidebar" class="w-full lg:w-96 bg-white border-r border-gray-200 flex flex-col lg:flex">
-            <!-- Header -->
-            <div class="p-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-                <h1 class="text-2xl font-bold mb-1"><i class="fas fa-satellite mr-2"></i>GPS Tracking</h1>
-                <p class="text-blue-100 text-sm">Real-time IoT Device Monitoring</p>
+        <div class="sidebar">
+            <div class="header">
+                <h1>🚀 GPS Satellite Tracking</h1>
+                <p>Real-time satellite view monitoring</p>
             </div>
             
-            <!-- Stats -->
-            <div class="p-4 bg-gray-50 border-b border-gray-200">
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <div class="bg-white p-4 rounded-lg shadow border border-gray-100">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-blue-100 rounded-lg mr-3">
-                                <i class="fas fa-map-marker-alt text-blue-600"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Total Points</p>
-                                <p class="text-xl font-bold text-gray-800"><?php echo count($locations); ?></p>
-                            </div>
+            <div class="stats">
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="label">Total Points</div>
+                        <div class="value"><?php echo $total_points; ?></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Avg Voltage</div>
+                        <div class="value"><?php echo number_format($avg_voltage, 2); ?>V</div>
+                    </div>
+                </div>
+                <div style="font-size: 11px; color: #a0aec0; text-align: center;">
+                    Last update: <?php echo date('H:i:s'); ?>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn" onclick="window.location.reload()">
+                    🔄 Refresh
+                </button>
+                <button class="btn btn-success" onclick="showAllMarkers()">
+                    📍 Show All
+                </button>
+                <button class="btn btn-danger" onclick="clearSelection()">
+                    ✖️ Clear
+                </button>
+            </div>
+            
+            <div class="location-list">
+                <?php if ($total_points > 0): ?>
+                    <?php foreach ($locations as $index => $loc): 
+                        $time = !empty($loc['time']) ? date('H:i:s', strtotime($loc['time'])) : 'N/A';
+                        $voltage_class = 'voltage-normal';
+                        if ($loc['voltage'] < 11.5) $voltage_class = 'voltage-low';
+                        if ($loc['voltage'] > 12.0) $voltage_class = 'voltage-high';
+                    ?>
+                    <div class="location-item" data-index="<?php echo $index; ?>" onclick="focusLocation(<?php echo $index; ?>)">
+                        <div class="loc-header">
+                            <div class="loc-id">📍 Point #<?php echo $loc['id']; ?></div>
+                            <div class="loc-time"><?php echo $time; ?></div>
+                        </div>
+                        <div class="loc-coords">
+                            <?php echo number_format($loc['lat'], 6); ?>, <?php echo number_format($loc['lng'], 6); ?>
+                        </div>
+                        <div class="loc-voltage <?php echo $voltage_class; ?>">
+                            ⚡ <?php echo number_format($loc['voltage'], 2); ?>V
                         </div>
                     </div>
-                    <div class="bg-white p-4 rounded-lg shadow border border-gray-100">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-green-100 rounded-lg mr-3">
-                                <i class="fas fa-bolt text-green-600"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Avg Voltage</p>
-                                <p class="text-xl font-bold text-gray-800">
-                                    <?php 
-                                    if (!empty($locations)) {
-                                        $totalVoltage = 0;
-                                        foreach ($locations as $loc) {
-                                            $totalVoltage += $loc['voltage'];
-                                        }
-                                        echo number_format($totalVoltage / count($locations), 2) . 'V';
-                                    } else {
-                                        echo '0V';
-                                    }
-                                    ?>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Info & Controls -->
-                <div class="flex items-center justify-between text-sm">
-                    <div class="flex items-center text-gray-600">
-                        <i class="fas fa-clock mr-2"></i>
-                        <span><?php echo date('H:i:s'); ?></span>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button onclick="window.location.reload()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm flex items-center">
-                            <i class="fas fa-redo-alt mr-1"></i> Refresh
-                        </button>
-                        <button onclick="downloadData()" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm flex items-center">
-                            <i class="fas fa-download mr-1"></i> Export
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Filter -->
-            <div class="p-4 border-b border-gray-200">
-                <div class="flex space-x-2">
-                    <input type="text" id="searchInput" placeholder="Search ID..." class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm">
-                    <select id="voltageFilter" class="border border-gray-300 rounded px-3 py-2 text-sm">
-                        <option value="all">All Voltage</option>
-                        <option value="low">Low (< 11.5V)</option>
-                        <option value="normal">Normal (11.5-12V)</option>
-                        <option value="high">High (> 12V)</option>
-                    </select>
-                </div>
-            </div>
-            
-            <!-- Location List -->
-            <div class="flex-1 overflow-y-auto">
-                <div class="p-4 sticky top-0 bg-white border-b border-gray-200 z-10">
-                    <h3 class="font-semibold text-gray-700 flex items-center">
-                        <i class="fas fa-history mr-2"></i> Location History
-                        <span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                            <?php echo count($display_locations); ?> shown
-                        </span>
-                    </h3>
-                </div>
-                
-                <?php if (empty($display_locations)): ?>
-                    <div class="text-center py-10 text-gray-500">
-                        <i class="fas fa-map-marker-slash text-4xl mb-3"></i>
-                        <p class="mb-2">No GPS data available</p>
-                        <?php if ($error): ?>
-                            <p class="text-sm text-red-500"><?php echo $error; ?></p>
-                        <?php endif; ?>
-                    </div>
+                    <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="divide-y divide-gray-100">
-                        <?php foreach ($display_locations as $index => $loc): 
-                            $time = !empty($loc['time']) ? date('H:i:s', strtotime($loc['time'])) : 'N/A';
-                            $date = !empty($loc['time']) ? date('d/m/Y', strtotime($loc['time'])) : '';
-                            
-                            // Voltage styling
-                            $voltageClass = 'text-green-600';
-                            $voltageIcon = 'fa-battery-full';
-                            $voltageStatus = 'Normal';
-                            
-                            if ($loc['voltage'] < 11.5) {
-                                $voltageClass = 'text-red-600';
-                                $voltageIcon = 'fa-battery-quarter';
-                                $voltageStatus = 'Low';
-                            } elseif ($loc['voltage'] > 12.0) {
-                                $voltageClass = 'text-blue-600';
-                                $voltageIcon = 'fa-battery-full';
-                                $voltageStatus = 'High';
-                            }
-                        ?>
-                        <div class="location-item p-4 hover:bg-blue-50 cursor-pointer transition-colors border-l-4 border-blue-500"
-                             onclick="focusLocation(<?php echo $index; ?>)"
-                             data-index="<?php echo $index; ?>"
-                             data-voltage="<?php echo $loc['voltage']; ?>"
-                             data-id="<?php echo $loc['id']; ?>">
-                            <div class="flex justify-between items-start">
-                                <div class="flex items-start">
-                                    <div class="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-700 rounded-full text-sm font-bold mr-3 mt-1">
-                                        <?php echo $index + 1; ?>
-                                    </div>
-                                    <div>
-                                        <p class="font-medium text-gray-800">Point #<?php echo $loc['id']; ?></p>
-                                        <p class="text-xs text-gray-500 mb-2">
-                                            <i class="far fa-clock mr-1"></i><?php echo $date; ?> <?php echo $time; ?>
-                                        </p>
-                                        <div class="flex items-center text-sm text-gray-600">
-                                            <i class="fas fa-location-dot mr-2 text-blue-500"></i>
-                                            <span class="font-mono text-xs">
-                                                <?php echo number_format($loc['lat'], 6); ?>, <?php echo number_format($loc['lng'], 6); ?>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="<?php echo $voltageClass; ?> font-semibold text-sm">
-                                        <i class="fas <?php echo $voltageIcon; ?> mr-1"></i>
-                                        <?php echo number_format($loc['voltage'], 2); ?>V
-                                    </div>
-                                    <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 mt-1 inline-block">
-                                        <?php echo $voltageStatus; ?>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
+                    <div style="text-align: center; padding: 40px; color: #a0aec0;">
+                        No GPS data available
                     </div>
-                    
-                    <?php if (count($locations) > 500): ?>
-                        <div class="p-4 text-center text-sm text-gray-500 border-t border-gray-200">
-                            Showing 500 of <?php echo count($locations); ?> total points
-                        </div>
-                    <?php endif; ?>
                 <?php endif; ?>
-            </div>
-            
-            <!-- Footer -->
-            <div class="p-4 border-t border-gray-200 bg-gray-50">
-                <div class="text-center text-sm text-gray-600">
-                    <p>© <?php echo date('Y'); ?> IoT Monitoring System</p>
-                    <p class="text-xs mt-1">Data updates every 30 seconds</p>
-                </div>
             </div>
         </div>
         
         <!-- Map Area -->
-        <div class="flex-1 relative">
-            <div id="map" class="w-full h-full"></div>
-            
-            <!-- Loading Overlay -->
-            <div id="loadingOverlay" class="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
-                <div class="text-center">
-                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-                    <p class="text-gray-700 font-medium">Loading Map...</p>
-                    <p class="text-gray-500 text-sm mt-2">Please wait while we load the map data</p>
-                </div>
-            </div>
-            
-            <!-- Map Controls -->
-            <div id="mapControls" class="absolute top-4 right-4 space-y-2 hidden">
-                <button onclick="showAllMarkers()" class="bg-white p-3 rounded-lg shadow-lg hover:shadow-xl transition-shadow flex items-center">
-                    <i class="fas fa-expand-arrows-alt mr-2 text-blue-600"></i>
-                    <span class="text-sm font-medium">Show All</span>
-                </button>
-                <button onclick="toggleRoute()" id="routeBtn" class="bg-white p-3 rounded-lg shadow-lg hover:shadow-xl transition-shadow flex items-center">
-                    <i class="fas fa-route mr-2 text-green-600"></i>
-                    <span class="text-sm font-medium">Show Route</span>
-                </button>
-                <button onclick="centerToLatest()" class="bg-white p-3 rounded-lg shadow-lg hover:shadow-xl transition-shadow flex items-center">
-                    <i class="fas fa-location-arrow mr-2 text-red-600"></i>
-                    <span class="text-sm font-medium">Latest</span>
-                </button>
-                <button onclick="clearMap()" class="bg-white p-3 rounded-lg shadow-lg hover:shadow-xl transition-shadow flex items-center">
-                    <i class="fas fa-trash-alt mr-2 text-gray-600"></i>
-                    <span class="text-sm font-medium">Clear</span>
-                </button>
-            </div>
-            
-            <!-- Map Info -->
-            <div class="absolute top-4 left-4">
-                <div class="bg-white bg-blur rounded-lg shadow-lg p-4 min-w-[200px] border border-gray-200">
-                    <h3 class="font-bold text-gray-800 mb-2">Map Info</h3>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Points:</span>
-                            <span class="font-semibold"><?php echo count($locations); ?></span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Status:</span>
-                            <span class="font-semibold" id="mapStatus">Loading...</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Zoom:</span>
-                            <span class="font-semibold" id="zoomLevel">-</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Error Message -->
-            <div id="mapError" class="absolute inset-0 bg-red-50 flex items-center justify-center z-40 hidden">
-                <div class="text-center p-8 max-w-md">
-                    <i class="fas fa-exclamation-triangle text-red-500 text-5xl mb-4"></i>
-                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Map Error</h3>
-                    <p class="text-gray-600 mb-4" id="errorMessage">Failed to load map</p>
-                    <button onclick="initMap()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
-                        <i class="fas fa-redo-alt mr-2"></i> Retry
-                    </button>
-                </div>
+        <div id="map"></div>
+        
+        <!-- Map Controls -->
+        <div class="map-controls">
+            <button class="map-btn" onclick="showAllMarkers()">
+                📍 Show All Points
+            </button>
+            <button class="map-btn" onclick="centerToLatest()">
+                🎯 Go to Latest
+            </button>
+            <button class="map-btn" onclick="toggleMarkers()" id="toggleMarkersBtn">
+                👁️ Show Markers
+            </button>
+            <button class="map-btn" onclick="drawRoute()" id="routeBtn">
+                🧭 Draw Route
+            </button>
+        </div>
+        
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div>📍 Points: <span id="pointCount"><?php echo $total_points; ?></span> | 
+                 Zoom: <span id="zoomLevel">-</span> | 
+                 🛰️ Satellite View
             </div>
         </div>
     </div>
@@ -347,147 +377,172 @@
     
     <script>
         // Data dari PHP
-        const gpsData = <?php echo !empty($locations) ? json_encode($locations) : '[]'; ?>;
+        const gpsData = <?php echo json_encode($locations); ?>;
         
-        // Global variables
+        // Variabel global
         let map = null;
         let markers = [];
+        let markersVisible = true;
         let routeLine = null;
         let routeVisible = false;
         
-        // Initialize map when page loads
-        window.addEventListener('load', function() {
-            setTimeout(initMap, 500); // Delay sedikit untuk memastikan semua resource load
+        // Initialize map
+        document.addEventListener('DOMContentLoaded', function() {
+            if (gpsData.length > 0) {
+                initMap();
+            } else {
+                document.getElementById('map').innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #2d3748; color: #cbd5e0;">
+                        <div style="text-align: center; padding: 20px;">
+                            <div style="font-size: 48px; margin-bottom: 20px;">🛰️</div>
+                            <h3>No GPS Data Available</h3>
+                            <p style="margin-top: 10px; font-size: 14px;">Waiting for GPS data from device...</p>
+                            <button onclick="window.location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #4299e1; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
         });
         
         function initMap() {
             try {
-                // Hide loading overlay
-                document.getElementById('loadingOverlay').style.display = 'none';
-                
-                if (gpsData.length === 0) {
-                    showMapError('No GPS data available');
-                    return;
-                }
-                
-                // Use first point as center
+                // Gunakan titik pertama sebagai center
                 const firstPoint = gpsData[0];
                 
-                // Initialize map
-                map = L.map('map').setView([firstPoint.lat, firstPoint.lng], 15);
-                
-                // Add OpenStreetMap tile layer
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                    maxZoom: 19
-                }).addTo(map);
-                
-                // Add markers
-                addMarkers();
-                
-                // Show controls
-                document.getElementById('mapControls').classList.remove('hidden');
-                document.getElementById('mapStatus').textContent = 'Ready';
-                
-                // Update zoom level
-                map.on('zoomend', function() {
-                    document.getElementById('zoomLevel').textContent = map.getZoom();
+                // Initialize map dengan SATELLITE VIEW
+                map = L.map('map', {
+                    center: [firstPoint.lat, firstPoint.lng],
+                    zoom: 17,
+                    zoomControl: true,
+                    attributionControl: false
                 });
                 
-                document.getElementById('zoomLevel').textContent = map.getZoom();
+                // TILE LAYER SATELITE - OpenStreetMap HOT (high contrast untuk satelite)
+                L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap contributors, Tiles style by Humanitarian OpenStreetMap Team'
+                }).addTo(map);
                 
-                // Auto fit bounds if multiple points
+                // TAMBAHAN: ESRI Satellite (jika ingin benar-benar satelite)
+                const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                });
+                
+                // Layer control sederhana
+                const baseLayers = {
+                    "Satellite View": esriSatellite,
+                    "Street Map": L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png')
+                };
+                
+                esriSatellite.addTo(map); // Default pakai Esri Satellite
+                L.control.layers(baseLayers).addTo(map);
+                
+                // Tambahkan marker
+                addMarkers();
+                
+                // Update zoom level
+                map.on('zoomend', updateZoomLevel);
+                updateZoomLevel();
+                
+                // Auto fit bounds jika banyak titik
                 if (gpsData.length > 1) {
-                    setTimeout(showAllMarkers, 1000);
+                    setTimeout(function() {
+                        showAllMarkers();
+                    }, 1000);
                 }
                 
-                // Setup search/filter
-                setupFilters();
+                console.log('Map initialized with', gpsData.length, 'points');
                 
             } catch (error) {
-                showMapError('Failed to initialize map: ' + error.message);
-                console.error('Map Error:', error);
+                console.error('Map initialization failed:', error);
+                alert('Failed to load map. Please check your internet connection.');
             }
         }
         
         function addMarkers() {
-            // Clear existing markers
-            if (markers.length > 0) {
-                markers.forEach(function(marker) {
-                    map.removeLayer(marker);
-                });
-                markers = [];
-            }
+            // Hapus marker lama
+            clearMarkers();
             
-            // Create markers for each point
+            // Buat marker untuk setiap titik
             gpsData.forEach(function(location, index) {
-                // Determine marker color based on voltage
-                let markerColor = 'green';
-                let voltageStatus = 'Normal';
+                // Tentukan warna berdasarkan voltage
+                let color = '#10B981'; // hijau default (normal)
+                if (location.voltage < 11.5) color = '#EF4444'; // merah (low)
+                if (location.voltage > 12.0) color = '#3B82F6'; // biru (high)
                 
-                if (location.voltage < 11.5) {
-                    markerColor = 'red';
-                    voltageStatus = 'Low';
-                } else if (location.voltage > 12.0) {
-                    markerColor = 'blue';
-                    voltageStatus = 'High';
-                }
-                
-                // Create custom icon
-                const iconHtml = `
-                    <div style="background-color: ${markerColor}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">
-                        ${index + 1}
-                    </div>
-                `;
-                
+                // Buat custom icon yang lebih visible di satelite
                 const icon = L.divIcon({
-                    html: iconHtml,
+                    html: `
+                        <div style="
+                            background-color: ${color};
+                            width: 24px;
+                            height: 24px;
+                            border-radius: 50%;
+                            border: 3px solid white;
+                            box-shadow: 0 0 10px rgba(0,0,0,0.7);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-weight: bold;
+                            font-size: 11px;
+                        ">
+                            ${index + 1}
+                        </div>
+                    `,
                     className: 'custom-marker',
                     iconSize: [30, 30],
                     iconAnchor: [15, 30]
                 });
                 
-                // Create marker
-                const marker = L.marker([location.lat, location.lng], { icon: icon });
+                // Buat marker
+                const marker = L.marker([location.lat, location.lng], { 
+                    icon: icon,
+                    title: `Point #${location.id}`
+                });
                 
                 // Popup content
                 const timeStr = location.time ? new Date(location.time).toLocaleString('id-ID') : 'N/A';
+                const voltageStatus = location.voltage < 11.5 ? 'Low' : (location.voltage > 12.0 ? 'High' : 'Normal');
                 
                 const popupContent = `
-                    <div style="padding: 10px; min-width: 250px;">
-                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                            <div style="width: 40px; height: 40px; border-radius: 50%; background-color: #dbeafe; display: flex; align-items: center; justify-content: center; margin-right: 10px;">
-                                <i class="fas fa-map-pin" style="color: #3b82f6;"></i>
+                    <div style="min-width: 220px; padding: 5px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background-color: #4299e1; display: flex; align-items: center; justify-content: center; margin-right: 10px;">
+                                <span style="color: white; font-weight: bold;">${index + 1}</span>
                             </div>
                             <div>
-                                <h4 style="margin: 0; font-weight: bold; color: #1e293b;">Point #${location.id}</h4>
-                                <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b;">
-                                    <i class="far fa-clock"></i> ${timeStr}
-                                </p>
+                                <div style="font-weight: bold; color: #2d3748;">Point #${location.id}</div>
+                                <div style="font-size: 11px; color: #718096;">${timeStr}</div>
                             </div>
                         </div>
-                        <div style="margin-top: 10px;">
-                            <div style="margin-bottom: 5px;">
-                                <span style="color: #64748b; font-size: 13px;">Coordinates:</span><br>
-                                <span style="font-family: monospace; font-size: 13px; color: #475569;">
-                                    ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}
-                                </span>
+                        <div style="margin-bottom: 8px;">
+                            <div style="font-size: 12px; color: #4a5568; margin-bottom: 3px;">Coordinates:</div>
+                            <div style="font-family: monospace; font-size: 11px; background: #f7fafc; padding: 4px 6px; border-radius: 4px; color: #2d3748;">
+                                ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}
                             </div>
-                            <div style="margin-bottom: 5px;">
-                                <span style="color: #64748b; font-size: 13px;">Voltage:</span>
-                                <span style="color: ${markerColor}; font-weight: bold; margin-left: 5px;">
-                                    ${location.voltage.toFixed(2)}V (${voltageStatus})
-                                </span>
-                            </div>
-                            ${location.accuracy ? `
-                            <div style="margin-bottom: 5px;">
-                                <span style="color: #64748b; font-size: 13px;">Accuracy:</span>
-                                <span style="margin-left: 5px;">${location.accuracy}m</span>
-                            </div>` : ''}
                         </div>
-                        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #e2e8f0;">
-                            <button onclick="focusLocation(${index})" style="width: 100%; background-color: #3b82f6; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px;">
-                                <i class="fas fa-search-location" style="margin-right: 5px;"></i> Focus on Map
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid #e2e8f0;">
+                            <div>
+                                <div style="font-size: 12px; color: #4a5568;">Voltage:</div>
+                                <div style="color: ${color}; font-weight: bold; font-size: 14px;">
+                                    ${location.voltage.toFixed(2)}V
+                                </div>
+                                <div style="font-size: 11px; color: #718096;">${voltageStatus}</div>
+                            </div>
+                            <button onclick="focusLocation(${index})" style="
+                                background: #4299e1;
+                                color: white;
+                                border: none;
+                                padding: 6px 12px;
+                                border-radius: 4px;
+                                cursor: pointer;
+                                font-size: 11px;
+                                font-weight: 500;
+                            ">
+                                📍 Focus
                             </button>
                         </div>
                     </div>
@@ -505,26 +560,33 @@
             });
         }
         
-        function showMapError(message) {
-            document.getElementById('loadingOverlay').style.display = 'none';
-            document.getElementById('mapError').classList.remove('hidden');
-            document.getElementById('errorMessage').textContent = message;
+        function clearMarkers() {
+            markers.forEach(function(marker) {
+                map.removeLayer(marker);
+            });
+            markers = [];
         }
         
         function showAllMarkers() {
             if (!map || gpsData.length === 0) return;
             
-            const bounds = L.latLngBounds(gpsData.map(loc => [loc.lat, loc.lng]));
-            map.fitBounds(bounds, { padding: [50, 50] });
+            const bounds = L.latLngBounds([]);
+            gpsData.forEach(function(loc) {
+                bounds.extend([loc.lat, loc.lng]);
+            });
+            
+            map.fitBounds(bounds, { 
+                padding: [50, 50],
+                maxZoom: 17
+            });
         }
         
         function centerToLatest() {
             if (!map || gpsData.length === 0) return;
             
             const latest = gpsData[0];
-            map.setView([latest.lat, latest.lng], 16);
+            map.setView([latest.lat, latest.lng], 18);
             
-            // Open popup for latest marker
             if (markers[0]) {
                 markers[0].openPopup();
                 highlightSidebarItem(0);
@@ -535,102 +597,92 @@
             if (!map || index < 0 || index >= gpsData.length) return;
             
             const location = gpsData[index];
-            map.setView([location.lat, location.lng], 17);
+            map.setView([location.lat, location.lng], 18);
             
-            // Open marker popup
             if (markers[index]) {
                 markers[index].openPopup();
+                highlightSidebarItem(index);
             }
-            
-            // Highlight in sidebar
-            highlightSidebarItem(index);
         }
         
         function highlightSidebarItem(index) {
-            // Remove previous highlights
+            // Hapus highlight sebelumnya
             document.querySelectorAll('.location-item').forEach(function(item) {
-                item.classList.remove('bg-blue-100');
-                item.style.borderLeftColor = '#3b82f6'; // blue-500
+                item.classList.remove('active');
             });
             
-            // Highlight selected item
+            // Highlight yang dipilih
             const selectedItem = document.querySelector('.location-item[data-index="' + index + '"]');
             if (selectedItem) {
-                selectedItem.classList.add('bg-blue-100');
-                selectedItem.style.borderLeftColor = '#1e40af'; // blue-800
-                
-                // Scroll to item
+                selectedItem.classList.add('active');
                 selectedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
         
-        function setupFilters() {
-            const searchInput = document.getElementById('searchInput');
-            const voltageFilter = document.getElementById('voltageFilter');
-            
-            searchInput.addEventListener('input', function() {
-                const searchTerm = this.value.toLowerCase();
-                document.querySelectorAll('.location-item').forEach(function(item) {
-                    const id = item.getAttribute('data-id').toLowerCase();
-                    if (id.includes(searchTerm)) {
-                        item.style.display = 'block';
-                    } else {
-                        item.style.display = 'none';
-                    }
+        function toggleMarkers() {
+            if (markersVisible) {
+                markers.forEach(function(marker) {
+                    map.removeLayer(marker);
                 });
-            });
-            
-            voltageFilter.addEventListener('change', function() {
-                const value = this.value;
-                document.querySelectorAll('.location-item').forEach(function(item) {
-                    const voltage = parseFloat(item.getAttribute('data-voltage'));
-                    let show = true;
-                    
-                    if (value === 'low' && voltage >= 11.5) show = false;
-                    if (value === 'normal' && (voltage < 11.5 || voltage > 12.0)) show = false;
-                    if (value === 'high' && voltage <= 12.0) show = false;
-                    
-                    item.style.display = show ? 'block' : 'none';
+                markersVisible = false;
+                document.getElementById('toggleMarkersBtn').innerHTML = '👁️‍🗨️ Show Markers';
+            } else {
+                markers.forEach(function(marker) {
+                    marker.addTo(map);
                 });
-            });
-        }
-        
-        function downloadData() {
-            if (gpsData.length === 0) {
-                alert('No data to export');
-                return;
+                markersVisible = true;
+                document.getElementById('toggleMarkersBtn').innerHTML = '👁️ Hide Markers';
             }
-            
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "ID,Latitude,Longitude,Voltage,Time,Accuracy\n";
-            
-            gpsData.forEach(function(loc) {
-                csvContent += `${loc.id},${loc.lat},${loc.lng},${loc.voltage},"${loc.time}",${loc.accuracy || ''}\n`;
-            });
-            
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `gps_data_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
         }
         
-        // Toggle sidebar for mobile
-        document.getElementById('toggleSidebar')?.addEventListener('click', function() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('hidden');
-        });
+        function drawRoute() {
+            if (routeVisible) {
+                if (routeLine) map.removeLayer(routeLine);
+                routeVisible = false;
+                document.getElementById('routeBtn').innerHTML = '🧭 Draw Route';
+            } else if (gpsData.length > 1) {
+                // Hapus route lama
+                if (routeLine) map.removeLayer(routeLine);
+                
+                // Buat array koordinat
+                const coordinates = [];
+                gpsData.forEach(function(loc) {
+                    coordinates.push([loc.lat, loc.lng]);
+                });
+                
+                // Buat polyline
+                routeLine = L.polyline(coordinates, {
+                    color: '#4299e1',
+                    weight: 4,
+                    opacity: 0.8,
+                    dashArray: '10, 10',
+                    lineCap: 'round'
+                }).addTo(map);
+                
+                routeVisible = true;
+                document.getElementById('routeBtn').innerHTML = '🧭 Remove Route';
+            }
+        }
         
-        // Auto-refresh every 30 seconds
+        function clearSelection() {
+            highlightSidebarItem(-1);
+            if (routeLine) {
+                map.removeLayer(routeLine);
+                routeVisible = false;
+                document.getElementById('routeBtn').innerHTML = '🧭 Draw Route';
+            }
+        }
+        
+        function updateZoomLevel() {
+            if (map) {
+                document.getElementById('zoomLevel').textContent = map.getZoom();
+            }
+        }
+        
+        // Auto-refresh setiap 30 detik
         setTimeout(function() {
             window.location.reload();
         }, 30000);
-        
-        // Show map loading status
-        console.log('GPS Data Points:', gpsData.length);
-        console.log('Map initialization started...');
         
     </script>
 </body>
