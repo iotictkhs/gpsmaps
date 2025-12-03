@@ -35,17 +35,17 @@
     $api_url = "https://daffaiotdev.alwaysdata.net/apigps/api/get/monitoring";
     
     // Ambil data dari API
-    $context = stream_context_create([
-        'http' => [
+    $context = stream_context_create(array(
+        'http' => array(
             'method' => 'GET',
             'header' => "User-Agent: IoT-GPS-Tracking/1.0\r\n",
             'timeout' => 15
-        ],
-        'ssl' => [
+        ),
+        'ssl' => array(
             'verify_peer' => false,
             'verify_peer_name' => false
-        ]
-    ]);
+        )
+    ));
     
     $response = @file_get_contents($api_url, false, $context);
     
@@ -63,21 +63,23 @@
     }
     
     $data = null;
-    $locations = [];
+    $locations = array();
     
     if ($response !== FALSE && !empty($response)) {
         $data = json_decode($response, true);
         if ($data && isset($data['data']) && is_array($data['data'])) {
             foreach ($data['data'] as $item) {
                 if (!empty($item['latitude']) && !empty($item['longitude'])) {
-                    $locations[] = [
+                    $accuracy = isset($item['accurate']) ? $item['accurate'] : null;
+                    
+                    $locations[] = array(
                         'id' => $item['id'],
                         'lat' => floatval($item['latitude']),
                         'lng' => floatval($item['longitude']),
                         'voltage' => isset($item['voltage']) ? floatval($item['voltage']) : 0,
                         'time' => isset($item['created_at']) ? $item['created_at'] : '',
-                        'accuracy' => $item['accurate'] ?? null
-                    ];
+                        'accuracy' => $accuracy
+                    );
                 }
             }
             // Reverse untuk data terbaru pertama
@@ -119,7 +121,11 @@
                                 <p class="text-xl font-bold text-gray-800">
                                     <?php 
                                     if (!empty($locations)) {
-                                        $avg = array_sum(array_column($locations, 'voltage')) / count($locations);
+                                        $voltages = array();
+                                        foreach ($locations as $loc) {
+                                            $voltages[] = $loc['voltage'];
+                                        }
+                                        $avg = array_sum($voltages) / count($voltages);
                                         echo number_format($avg, 2) . 'V';
                                     } else {
                                         echo '0V';
@@ -335,7 +341,7 @@
             
             // Auto fit bounds jika banyak marker
             if (gpsData.length > 1) {
-                setTimeout(() => {
+                setTimeout(function() {
                     showAllMarkers();
                 }, 500);
             }
@@ -355,7 +361,7 @@
             });
             
             // Buat marker untuk setiap titik
-            gpsData.forEach((location, index) => {
+            gpsData.forEach(function(location, index) {
                 // Tentukan warna berdasarkan voltage
                 let markerColor = 'green';
                 if (location.voltage < 11.5) {
@@ -364,16 +370,39 @@
                     markerColor = 'blue';
                 }
                 
-                // Buat custom icon
-                const icon = L.divIcon({
-                    html: `
+                // Buat custom icon (menggunakan inline style untuk warna)
+                let iconHtml;
+                if (markerColor === 'red') {
+                    iconHtml = `
                         <div class="relative">
-                            <div class="w-8 h-8 rounded-full bg-${markerColor}-500 border-2 border-white shadow-lg flex items-center justify-center">
+                            <div class="w-8 h-8 rounded-full bg-red-500 border-2 border-white shadow-lg flex items-center justify-center">
                                 <span class="text-white text-xs font-bold">${index + 1}</span>
                             </div>
-                            <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-${markerColor}-500"></div>
+                            <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-red-500"></div>
                         </div>
-                    `,
+                    `;
+                } else if (markerColor === 'blue') {
+                    iconHtml = `
+                        <div class="relative">
+                            <div class="w-8 h-8 rounded-full bg-blue-500 border-2 border-white shadow-lg flex items-center justify-center">
+                                <span class="text-white text-xs font-bold">${index + 1}</span>
+                            </div>
+                            <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-blue-500"></div>
+                        </div>
+                    `;
+                } else {
+                    iconHtml = `
+                        <div class="relative">
+                            <div class="w-8 h-8 rounded-full bg-green-500 border-2 border-white shadow-lg flex items-center justify-center">
+                                <span class="text-white text-xs font-bold">${index + 1}</span>
+                            </div>
+                            <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-green-500"></div>
+                        </div>
+                    `;
+                }
+                
+                const icon = L.divIcon({
+                    html: iconHtml,
                     className: 'custom-marker',
                     iconSize: [32, 32],
                     iconAnchor: [16, 32],
@@ -381,12 +410,26 @@
                 });
                 
                 // Buat marker
-                const marker = L.marker([location.lat, location.lng], { icon });
+                const marker = L.marker([location.lat, location.lng], { icon: icon });
                 
                 // Popup content
                 const timeStr = location.time ? new Date(location.time).toLocaleString('id-ID') : 'N/A';
-                const voltageClass = location.voltage < 11.5 ? 'text-red-600' : 
-                                   location.voltage > 12.0 ? 'text-blue-600' : 'text-green-600';
+                let voltageClass = 'text-green-600';
+                if (location.voltage < 11.5) {
+                    voltageClass = 'text-red-600';
+                } else if (location.voltage > 12.0) {
+                    voltageClass = 'text-blue-600';
+                }
+                
+                let accuracyHtml = '';
+                if (location.accuracy) {
+                    accuracyHtml = `
+                        <div class="flex">
+                            <span class="text-gray-600 w-24">Accuracy:</span>
+                            <span>${location.accuracy}m</span>
+                        </div>
+                    `;
+                }
                 
                 const popupContent = `
                     <div class="p-3">
@@ -408,11 +451,7 @@
                                 <span class="text-gray-600 w-24">Voltage:</span>
                                 <span class="${voltageClass} font-semibold">${location.voltage.toFixed(2)}V</span>
                             </div>
-                            ${location.accuracy ? `
-                            <div class="flex">
-                                <span class="text-gray-600 w-24">Accuracy:</span>
-                                <span>${location.accuracy}m</span>
-                            </div>` : ''}
+                            ${accuracyHtml}
                         </div>
                         <div class="mt-3 pt-3 border-t border-gray-200">
                             <button onclick="focusLocation(${index})" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-1 rounded text-sm">
@@ -447,7 +486,10 @@
             }
             
             // Buat array koordinat
-            const coordinates = gpsData.map(loc => [loc.lat, loc.lng]);
+            const coordinates = [];
+            gpsData.forEach(function(loc) {
+                coordinates.push([loc.lat, loc.lng]);
+            });
             
             // Buat polyline
             routeLine = L.polyline(coordinates, {
@@ -484,7 +526,11 @@
         function showAllMarkers() {
             if (gpsData.length === 0) return;
             
-            const bounds = L.latLngBounds(gpsData.map(loc => [loc.lat, loc.lng]));
+            const bounds = L.latLngBounds([]);
+            gpsData.forEach(function(loc) {
+                bounds.extend([loc.lat, loc.lng]);
+            });
+            
             map.fitBounds(bounds, { padding: [50, 50] });
         }
         
@@ -518,13 +564,14 @@
         
         function highlightSidebarItem(index) {
             // Hapus highlight sebelumnya
-            document.querySelectorAll('.location-item').forEach(item => {
+            const allItems = document.querySelectorAll('.location-item');
+            allItems.forEach(function(item) {
                 item.classList.remove('border-blue-500', 'bg-blue-50');
                 item.classList.add('border-gray-200', 'bg-white');
             });
             
             // Highlight item yang dipilih
-            const selectedItem = document.querySelector(`.location-item[data-index="${index}"]`);
+            const selectedItem = document.querySelector('.location-item[data-index="' + index + '"]');
             if (selectedItem) {
                 selectedItem.classList.remove('border-gray-200', 'bg-white');
                 selectedItem.classList.add('border-blue-500', 'bg-blue-50');
@@ -549,7 +596,7 @@
         }
         
         // Auto-refresh setiap 30 detik
-        setTimeout(() => {
+        setTimeout(function() {
             window.location.reload();
         }, 30000);
     </script>
